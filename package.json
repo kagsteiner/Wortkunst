@@ -1,0 +1,20 @@
+{
+  "name": "wortkunst",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "node server/index.js",
+    "start": "NODE_ENV=production node server/index.js",
+    "build": "echo 'no build step for vanilla client'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Wortkunst - a private, creativity-focused German word game.",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "nanoid": "^5.0.7",
+    "ws": "^8.18.0"
+  }
+}
