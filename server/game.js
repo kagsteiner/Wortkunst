@@ -4,7 +4,7 @@ import { evaluateWords } from './llm.js';
 
 const games = new Map(); // gameId -> game
 
-export function createGame(playerCount, baseUrl) {
+export function createGame(playerCount, baseUrl, llmProvider = 'mistral') {
     const gameId = nanoId10();
     const playerSeats = Array.from({ length: playerCount }).map((_, idx) => ({
         seatId: `S${idx + 1}`,
@@ -30,7 +30,8 @@ export function createGame(playerCount, baseUrl) {
         consecutivePasses: 0,
         startedAt: undefined,
         endedAt: undefined,
-        baseUrl
+        baseUrl,
+        llmProvider
     };
     // Initialize racks and scores
     for (const seat of game.playerSeats) {
@@ -125,7 +126,8 @@ export function serializeStateForSeat(game, seatId) {
         bagCount: game.bag.length,
         turnSeatId,
         lastMove: game.moveHistory[game.moveHistory.length - 1] || null,
-        config: game.config
+        config: game.config,
+        llmProvider: game.llmProvider
     };
 }
 
@@ -169,14 +171,18 @@ export async function handleMovePlace(game, seatToken, tiles) {
 
     // Compute words list for LLM
     const words = validation.words.map((w) => w.word);
+    console.log(`[GAME] Player ${seat.seatId} placing tiles, calling LLM (${game.llmProvider}) to evaluate words: ${words.join(', ')}`);
     let evalResult;
     try {
-        evalResult = await evaluateWords(words);
+        evalResult = await evaluateWords(words, game.llmProvider);
+        console.log(`[GAME] LLM evaluation completed successfully for player ${seat.seatId}. Evaluated ${evalResult.evaluations?.length || 0} words`);
     } catch (e) {
+        console.log(`[GAME] LLM evaluation failed for player ${seat.seatId}: ${e.message}`);
         // On failure, record a failed result and allow user to retry via client action (not implemented server-side). For now, return error.
         return { ok: false, error: 'llm_failed' };
     }
     const moveScore = (evalResult.evaluations || []).reduce((sum, e) => sum + (Number(e.score) || 0), 0);
+    console.log(`[GAME] Player ${seat.seatId} move completed with score: ${moveScore} (total score: ${(game.scores[seat.seatId] || 0) + moveScore})`);
 
     // Update score
     game.scores[seat.seatId] = (game.scores[seat.seatId] || 0) + moveScore;

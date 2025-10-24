@@ -77,7 +77,8 @@ const server = http.createServer(async (req, res) => {
                 try {
                     const json = body ? JSON.parse(body) : {};
                     const playerCount = Math.max(1, Math.min(4, Number(json.playerCount) || 1));
-                    const game = createGame(playerCount, getBaseUrl(req));
+                    const llm = typeof json.llm === 'string' ? json.llm : 'mistral';
+                    const game = createGame(playerCount, getBaseUrl(req), llm);
                     sendJson(res, 200, {
                         gameId: game.gameId,
                         playerUrls: game.playerSeats.map((s) => `${getBaseUrl(req)}/g/${game.gameId}/p/${s.seatToken}`)
