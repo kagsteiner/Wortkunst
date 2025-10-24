@@ -10,7 +10,14 @@ So here is a fully functional variant that doesn't use letter values and multipl
 
 ## Setup
 
-This app uses the LLM mistral-large-latest from Mistral. No other one. So head over to mistral.ai and get your API Key. Then copy it into the .env file.
+You can use three different LLM judges:
+- Mistral Large
+- Claude Haiku 4.5
+- deepseek chat
+
+I have not included OpenAI models because in recent tests I found the performance of gpt-5, gpt-5-mini and even gpt-5-nano too slow for an app where the player has to sit there and wait for the judgement.
+
+Edit .env to include working API keys for the LLMs you want to support. Maybe change function renderHome() in public/app.js by removing LLMs you don't want.
 
 Afterwards do a
 
@@ -44,4 +51,5 @@ Have fun.
 This game has no login mechanism whatsover. Everyone can create games with everyone. And for every LLM judging your move you will pay a tiny amount to Mistral. Normal players is not a big deal; a full game will cost less than a Euro. But there are malicious people on the internet and a script that calls the LLM API just to make you pay is easy. I run it on my local server that is not connected to the internet.
 
 ## More details
-The full spec is found in specification.md - the code was fairly straightforward built by Cursor+GPT5 from this spec. (had to fix two minor bugs)
+The full spec is found in specification.md - the code was fairly straightforward built by Cursor+GPT5 from this spec. (had to fix two minor bugs).
+
