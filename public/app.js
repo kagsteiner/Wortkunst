@@ -6,6 +6,8 @@ let ws;
 let state = null;
 let localPlacement = []; // {x,y, fromIndex, isBlank, assignedLetter, letter}
 let selectedRackIndex = null;
+let exchangeModalOpen = false;
+let exchangeSelectedIndices = [];
 
 render();
 
@@ -40,6 +42,12 @@ function renderHome() {
           <option value="3">3</option>
           <option value="4">4</option>
         </select>
+        <label>LLM:</label>
+        <select id="llmSelect">
+          <option value="mistral">Mistral Large</option>
+          <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+          <option value="deepseek-chat">DeepSeek Chat</option>
+        </select>
         <button class="button" id="create">Neues Spiel</button>
       </div>
       <div id="urls" class="urls" style="margin-top:12px;"></div>
@@ -47,7 +55,8 @@ function renderHome() {
   `;
   el('#create').onclick = async () => {
     const playerCount = Number(el('#playerCount').value);
-    const resp = await fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerCount }) });
+    const llm = String(el('#llmSelect').value || 'mistral');
+    const resp = await fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerCount, llm }) });
     const json = await resp.json();
     const urls = json.playerUrls || [];
     const box = el('#urls');
@@ -104,7 +113,7 @@ function renderGameView(s) {
   const controls = `
     <div class="controls">
       <button class="button" id="confirm" ${yourTurn && localPlacement.length ? '' : 'disabled'}>Zug bestätigen</button>
-      <button class="button" id="exchange" ${yourTurn ? '' : 'disabled'}>Tauschen</button>
+      <button class="button" id="exchange" ${yourTurn ? '' : 'disabled'}>Zurücklegen</button>
       <button class="button" id="pass" ${yourTurn ? '' : 'disabled'}>Passen</button>
       <button class="button" id="recall" ${localPlacement.length ? '' : 'disabled'}>Zurückholen</button>
       <span class="scores">Beutel: ${s.bagCount}</span>
@@ -113,7 +122,7 @@ function renderGameView(s) {
   const last = s.lastMove;
   const lastHtml = last ? `<div class="card"><div><b>Letzter Zug:</b> ${last.seatId}, Punkte: ${last.moveScore}</div><div class="explanation">${last.explanationText || ''}</div></div>` : '';
   const scores = Object.entries(s.scores).map(([sid, sc]) => `${sid}: ${sc}`).join(' · ');
-  return `
+  const content = `
     <div class="row">
       <div class="col">
         <div class="card">${boardHtml}</div>
@@ -125,6 +134,7 @@ function renderGameView(s) {
       </div>
     </div>
   `;
+  return content + (exchangeModalOpen ? renderExchangeModal(s) : '');
 }
 
 function renderBoard(s) {
@@ -244,11 +254,49 @@ function bindInteractions() {
   if (passBtn) passBtn.onclick = () => ws.send(JSON.stringify({ type: 'pass' }));
   const exchBtn = el('#exchange');
   if (exchBtn) exchBtn.onclick = () => {
-    const toSwap = prompt('Indizes zum Tauschen, z.B. "0,2,5"');
-    if (!toSwap) return;
-    const indices = toSwap.split(',').map((x) => Number(x.trim())).filter((n) => Number.isInteger(n));
-    ws.send(JSON.stringify({ type: 'exchange', rackIndices: indices }));
+    exchangeModalOpen = true;
+    exchangeSelectedIndices = [];
+    render();
   };
+
+  // Bind exchange modal interactions if open
+  if (exchangeModalOpen) {
+    const modal = el('#exchangeModal');
+    if (modal) {
+      // Close on overlay click
+      modal.onclick = (e) => {
+        if (e.target && e.target.id === 'exchangeModal') {
+          exchangeModalOpen = false;
+          exchangeSelectedIndices = [];
+          render();
+        }
+      };
+      // Tile selection
+      modal.querySelectorAll('.exchange-tile').forEach((tile) => {
+        tile.onclick = () => {
+          if (tile.getAttribute('data-disabled') === '1') return;
+          const i = Number(tile.getAttribute('data-i'));
+          const idx = exchangeSelectedIndices.indexOf(i);
+          if (idx >= 0) exchangeSelectedIndices.splice(idx, 1); else exchangeSelectedIndices.push(i);
+          render();
+        };
+      });
+      const confirmBtn = el('#exchangeConfirm');
+      if (confirmBtn) confirmBtn.onclick = () => {
+        if (!exchangeSelectedIndices.length) return;
+        ws.send(JSON.stringify({ type: 'exchange', rackIndices: exchangeSelectedIndices.slice() }));
+        exchangeModalOpen = false;
+        exchangeSelectedIndices = [];
+        render();
+      };
+      const cancelBtn = el('#exchangeCancel');
+      if (cancelBtn) cancelBtn.onclick = () => {
+        exchangeModalOpen = false;
+        exchangeSelectedIndices = [];
+        render();
+      };
+    }
+  }
 }
 
 function submitPlacement() {
@@ -260,6 +308,36 @@ function submitPlacement() {
 
 function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+
+function renderExchangeModal(s) {
+  const tiles = s.rack || [];
+  const used = new Set(localPlacement.map((p) => p.fromIndex));
+  const tilesHtml = tiles
+    .map((t, i) => {
+      const isUsed = used.has(i);
+      const isSelected = exchangeSelectedIndices.includes(i);
+      const classes = ['exchange-tile'];
+      if (isSelected) classes.push('selected');
+      if (isUsed) classes.push('disabled');
+      const disabledAttr = isUsed ? '1' : '0';
+      return `<div class="${classes.join(' ')}" data-i="${i}" data-disabled="${disabledAttr}">${escapeHtml(t.isBlank ? '□' : t.letter)}</div>`;
+    })
+    .join('');
+  const confirmDisabled = exchangeSelectedIndices.length ? '' : 'disabled';
+  return `
+    <div class="modal-overlay" id="exchangeModal">
+      <div class="modal">
+        <div class="modal-title">Buchstaben zurücklegen</div>
+        <div class="exchange-tiles">${tilesHtml}</div>
+        <div class="modal-actions">
+          <button class="button" id="exchangeConfirm" ${confirmDisabled}>Zurücklegen</button>
+          <button class="button secondary" id="exchangeCancel">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 
