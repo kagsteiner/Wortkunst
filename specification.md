@@ -290,3 +290,19 @@ Notes:
 - Logging: minimal server logs for game lifecycle and LLM request/response status (no PII).
 - Deployment: single Node.js process acceptable for MVP; sticky sessions not required.
 - TLS termination and detailed protocol/RFC documentation are out of scope for MVP (use platform defaults or hosting provider solutions).
+
+
+# updates - later prompts after initial version
+
+## Proper "Zurücklegen" modal
+Please rework the "Zurücklegen" dialog. Right now this is a simple pop-up and you have to select 0-indexed indices of the letters. It would be better if this was a custom modal that shows the seven letters and you can select them from there, where the selected are then highlighted.
+
+## Other LLMs
+Please add support for these LLMs in addition to Mistral:
+- Anthropic Claude haiku 4.5 - claude-haiku-4-5 , using ANTHROPIC_API_KEY in .env
+- Deepseek - deepseek-chat, using DEEPSEEK_API_KEY in .env.
+
+To select which LLM to use, the start screen for the invitation shall contain a dropdown next to the player select to select one. This should then be sent to the backend for this session and stored there.
+
+## Styling
+You were using a styling from a previous app, which was a cool idea and well executed. But this app was for a more design-heavy task. This is a game. Can you change the styling towards a more friendly game-ish look and feel, with brighter colors, maybe in a pastel style, not overdoing it and being too much like M&M colors :-)
