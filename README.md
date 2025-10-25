@@ -6,7 +6,7 @@ There is something I hate about Scrabble - the tactics, not putting a beautiful 
 
 So here is a fully functional variant that doesn't use letter values and multipliers on squares. It asks an LLM to judge your word(s) in terms of how rare, creative and beautiful your words are. No, this is not a precise thing, but on average you get awarded score for finding great words, and not for tactics.
 
-![Screenshot](https://github.com/kagsteiner/Wortkunst/blob/29d9948849708c6dddcaa7c29e6d51265fb93f16/screenshot.png)
+![Screenshot](https://github.com/kagsteiner/Wortkunst/blob/5231583cf929dd5af4c1df430156ff7045368213/screenshot.png)
 
 ## Setup
 
